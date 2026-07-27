@@ -118,3 +118,50 @@ Duffel data, have it checked against real rules + RAG policy, see it land booked
 pending, and a manager can approve it — all through a genuinely well-designed UI.
 Multi-agent specialization, real Duffel keys, duty-of-care tracking, licensing
 packaging, and SOC2 are separate future specs.
+
+## Down-the-road ideas: reducing adoption friction
+
+Not scoped, not scheduled — captured here so they aren't lost. The unifying thesis:
+**the biggest adoption barrier for a company this size isn't the AI, it's asking
+someone to open yet another tab and learn yet another tool.** Every idea below routes
+Wayfare through a surface the company already has open, rather than adding a new one.
+When any of these gets prioritized, it becomes its own spec — this is raw material for
+that conversation, not a commitment.
+
+- **Slack / Microsoft Teams bot as the primary interface.** `/book`, or just DM the bot
+  in plain English — same LangGraph agent behind a chat-app adapter instead of (or
+  alongside) the standalone web chat. This is plausibly the highest-leverage single
+  addition: it means an employee never has to visit a separate app to book routine
+  travel. Approvals could route the same way — a manager approves from a Slack message,
+  not a login.
+- **Email-native booking and approvals.** Forward a meeting invite or "need to be in
+  Denver on the 12th" email to a dedicated address and the agent drafts options back in
+  the same thread. Approvals-by-email (reply "approve" to a notification) for managers
+  who live in their inbox, not Slack.
+- **Calendar integration (Google Calendar / Outlook).** Read upcoming meetings to
+  proactively suggest "you have an in-person client meeting in Austin next Tuesday —
+  want me to find flights?" instead of waiting to be asked. Write confirmed itineraries
+  back as calendar events with the confirmation/PNR attached, so the itinerary lives
+  where people already check their day.
+- **Expense-tool sync (Ramp, Brex, Expensify, Concur).** Push booking line items
+  directly into the company's existing expense system instead of creating a second
+  system of record travelers/finance have to reconcile against. This is also the
+  natural on-ramp to the buildplan's later Stripe Issuing / virtual-card work.
+- **SSO (Google Workspace / Microsoft Entra / Okta) instead of a standalone
+  login.** Removes "yet another password" friction and is usually a hard requirement
+  once a company has an IT department, not just a nicety.
+- **HRIS integration (Rippling, Gusto, BambooHR).** Auto-provision employees/managers
+  and their approval chain from the company's existing org chart instead of manual
+  seeding — relevant once this moves past a single demo company.
+- **"Reply to this thread" disruption handling.** When a flight is delayed/cancelled,
+  notify the traveler in whatever channel they already used to book (Slack DM, email,
+  SMS) with rebooking options one reply away, rather than requiring them to open the
+  app mid-disruption.
+- **Browser extension / right-click booking.** Highlight a meeting request or address
+  in Gmail/Outlook and get a "book travel for this" action inline, skipping the
+  navigate-to-a-new-tab step entirely.
+
+The common design implication for the current architecture: keep the agent's tool
+layer (`search_travel`, `check_policy`, `create_booking`) decoupled from any one
+"front door." The web chat is one adapter calling into that layer; Slack/email/Teams
+would be additional adapters calling the same agent and tools, not a rewrite.
