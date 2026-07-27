@@ -54,10 +54,24 @@ function formatDate(iso: string): string {
  * Boarding-pass-stub card. Signature element shared by the chat inline results
  * and the Task 11 itinerary page: a torn ticket with a main stub and a rotated
  * status stub.
+ *
+ * `onApprove`/`onReject` are only used by the itinerary page: when both are
+ * supplied and status is `pending_approval`, plain text-style action buttons
+ * render under the card (design-direction "trust surface").
  */
-export function BookingCard({ booking }: { booking: Booking }) {
+export function BookingCard({
+  booking,
+  onApprove,
+  onReject,
+}: {
+  booking: Booking;
+  onApprove?: () => void;
+  onReject?: () => void;
+}) {
   const status = booking.status ?? "booked";
   const { label, bg } = STATUS[status];
+  const showActions =
+    status === "pending_approval" && !!onApprove && !!onReject;
 
   const title = booking.kind === "flight" ? booking.airline : booking.name;
   const subLabel =
@@ -76,6 +90,7 @@ export function BookingCard({ booking }: { booking: Booking }) {
       : `${money(booking.nightly_rate_cents)}/night`;
 
   return (
+    <div>
     <div className="flex overflow-hidden rounded-lg bg-[var(--color-paper)] shadow-[0_1px_3px_rgba(27,42,65,0.08)]">
       {/* main stub */}
       <div className="flex-1 p-4">
@@ -116,6 +131,26 @@ export function BookingCard({ booking }: { booking: Booking }) {
           </span>
         </div>
       </div>
+    </div>
+
+      {showActions && (
+        <div className="mt-2 flex gap-4 px-1 font-sans text-sm">
+          <button
+            type="button"
+            onClick={onApprove}
+            className="font-medium text-[var(--color-teal)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-amber)]"
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            onClick={onReject}
+            className="rounded border border-[var(--color-slate)] px-2 text-[var(--color-slate)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-amber)]"
+          >
+            Reject
+          </button>
+        </div>
+      )}
     </div>
   );
 }
