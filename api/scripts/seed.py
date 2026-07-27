@@ -2,14 +2,41 @@
 clears prior Acme Corp rows first (dev-only script, no production guard needed
 since this is a single-demo-company build).
 """
+import uuid
+
 from core.db import get_db
 
 ACME_RULES = {
     "max_fare_class": "economy",
     "max_hotel_nightly_rate_cents": 25000,
-    "advance_booking_days_required": 3,
     "approval_threshold_cents": 150000,
 }
+
+DEMO_LOGIN_EMAIL = "jordan@acme-demo.test"
+DEMO_LOGIN_PASSWORD = "demo-password-123"
+
+
+def _create_demo_auth_user(db) -> str:
+    """Create (idempotently) the demo login auth user, returning its id.
+
+    ponytail: dev-only seed — if the user already exists, delete and recreate
+    rather than reconcile. supabase-py has no get-by-email, so we scan list_users.
+    """
+    try:
+        return db.auth.admin.create_user({
+            "email": DEMO_LOGIN_EMAIL,
+            "password": DEMO_LOGIN_PASSWORD,
+            "email_confirm": True,
+        }).user.id
+    except Exception:  # noqa: BLE001 — dev seed: any create failure means "already exists"
+        for user in db.auth.admin.list_users():
+            if user.email == DEMO_LOGIN_EMAIL:
+                db.auth.admin.delete_user(user.id)
+        return db.auth.admin.create_user({
+            "email": DEMO_LOGIN_EMAIL,
+            "password": DEMO_LOGIN_PASSWORD,
+            "email_confirm": True,
+        }).user.id
 
 
 def seed() -> None:
@@ -52,7 +79,23 @@ def seed() -> None:
         "rules": ACME_RULES,
     }).execute()
 
+    # Jordan Lee is the demo login user (employees[0]).
+    jordan = employees[0]
+    auth_user_id = _create_demo_auth_user(db)
+    db.table("employees").update({"auth_user_id": auth_user_id}).eq(
+        "id", jordan["id"]
+    ).execute()
+
+    trip = db.table("trips").insert({
+        "company_id": company_id,
+        "employee_id": jordan["id"],
+        "thread_id": str(uuid.uuid4()),
+    }).execute().data[0]
+
     print(f"Seeded Acme Corp ({company_id}) with manager + {len(employees)} employees.")
+    print(
+        f"Demo login: {DEMO_LOGIN_EMAIL} / {DEMO_LOGIN_PASSWORD}  ->  trip id: {trip['id']}"
+    )
 
 
 if __name__ == "__main__":

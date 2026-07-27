@@ -13,7 +13,7 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const { error } = await supabaseBrowserClient.auth.signInWithPassword({
+    const { data, error } = await supabaseBrowserClient.auth.signInWithPassword({
       email,
       password,
     });
@@ -21,7 +21,23 @@ export default function LoginPage() {
       setError(error.message);
       return;
     }
-    router.push("/chat");
+
+    const { data: employee } = await supabaseBrowserClient
+      .from("employees")
+      .select("id")
+      .eq("auth_user_id", data.user.id)
+      .single();
+
+    const { data: trip } = employee
+      ? await supabaseBrowserClient
+          .from("trips")
+          .select("id")
+          .eq("employee_id", employee.id)
+          .limit(1)
+          .single()
+      : { data: null };
+
+    router.push(trip ? `/chat/${trip.id}` : "/itinerary");
   }
 
   return (
