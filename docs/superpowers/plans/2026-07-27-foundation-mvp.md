@@ -1592,3 +1592,30 @@ mock Duffel data; real Duffel key, Supabase project linking, and Anthropic/Voyag
 keys are still manual follow-ups before this runs against live data. The next
 spec/plan cycle (multi-agent + duty-of-care) starts fresh per the brainstorming
 process, not as an extension of this plan.
+
+## Status: COMPLETE (2026-07-27)
+
+All 11 tasks built via subagent-driven-development, each with an independent
+task review; a final whole-branch review caught 4 Critical cross-cutting gaps
+(agent tool-call context/history never wired into `api/routes/chat.py`, login
+redirect 404, seed script never created an auth user/trip, missing CORS) plus
+1 Warning (an unenforced rule falsely implied by the seed config) — all fixed
+in one bundled fix wave and re-reviewed clean. Commits `95a30e6..cc27454`.
+
+**Manual follow-up still required before this runs against real data** (none
+of it is code — all environment/credentials):
+1. `npx supabase login && npx supabase link --project-ref <ref> && npx supabase db push` against a real Supabase project.
+2. Populate `api/.env` (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`) and `web/.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+3. Run `cd api && .venv/Scripts/python.exe scripts/seed.py` once the above is live — prints the demo login email/password and confirms the seeded trip.
+4. Ingest a real policy PDF via `policy.retrieval.ingest_policy_doc` (currently no doc has ever been ingested — the RAG "why" path is built but untested against real content).
+5. Real Duffel API key is still not wired — `MockDuffelClient` is what's live; swapping in a `RealDuffelClient` behind the same interface is unstarted.
+
+**Known, accepted limitations of this build** (deliberate MVP scope, not bugs):
+no RLS on `employees`/`trips`/`bookings`/`trip_messages` and no authz check on
+the bookings API routes — safe for one demo company (nothing in the current
+query logic leaks across employees), but both need to be closed together
+before a second company/tenant ever exists. A handful of Minor findings
+(confirmation codes not persisted, no runtime validation on `details`,
+approve/reject has no stamp animation, a couple of untested-but-low-risk
+branches) are parked — see git history for the itemized list if reviving this
+workspace's ledger is ever needed.
