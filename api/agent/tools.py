@@ -13,7 +13,8 @@ _duffel = MockDuffelClient()
 def search_travel(kind: str, origin_or_location: str, destination: str = "", date: str = "") -> list[dict]:
     """Search for flights (kind='flight', needs origin_or_location as origin,
     destination, date as depart_date) or hotels (kind='hotel',
-    origin_or_location as location, date as check_in)."""
+    origin_or_location as location, date as check_in, destination as
+    check_out — destination must be a check-out date, not an airport/city)."""
     if kind == "flight":
         options = _duffel.search_flights(origin_or_location, destination, date)
     else:
