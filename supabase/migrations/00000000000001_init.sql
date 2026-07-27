@@ -58,6 +58,19 @@ create table trip_messages (
     created_at timestamptz not null default now()
 );
 
+create function match_policy_chunks(
+    query_embedding vector(1024),
+    match_policy_id uuid,
+    match_count int
+) returns table (id uuid, content text, similarity float)
+language sql stable as $$
+    select id, content, 1 - (embedding <=> query_embedding) as similarity
+    from policy_chunks
+    where policy_id = match_policy_id
+    order by embedding <=> query_embedding
+    limit match_count;
+$$;
+
 create index policy_chunks_embedding_idx on policy_chunks
     using ivfflat (embedding vector_cosine_ops) with (lists = 10);
 create index employees_company_id_idx on employees (company_id);
