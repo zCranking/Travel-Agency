@@ -4,7 +4,7 @@ real Duffel API key exists — no call-site changes needed elsewhere.
 """
 import uuid
 
-from travel.models import BookingConfirmation, FlightOption, HotelOption
+from travel.models import BookingConfirmation, Disruption, FlightOption, HotelOption
 
 _FARE_CLASSES = ["economy", "premium_economy", "business"]
 _AIRLINES = ["Skyward Air", "Continental Wing", "Pacific Crest"]
@@ -53,3 +53,15 @@ class MockDuffelClient:
             confirmation_code=f"WF{uuid.uuid4().hex[:8].upper()}",
             price_cents=price,
         )
+
+    def get_disruption(self, details: dict) -> Disruption | None:
+        """Mocked, deterministic: Pacific Crest flights are always shown as
+        disrupted, everything else is clean. No real disruption feed exists
+        yet — this proves the check_disruptions/rebooking path end to end
+        against a stable fixture instead of random data."""
+        if details.get("airline") == "Pacific Crest":
+            return Disruption(
+                type="delay",
+                message="Pacific Crest flight delayed 3 hours due to crew scheduling.",
+            )
+        return None

@@ -23,3 +23,8 @@ class HotelOption(BaseModel):
 class BookingConfirmation(BaseModel):
     confirmation_code: str
     price_cents: int
+
+
+class Disruption(BaseModel):
+    type: str  # "delay" | "cancellation"
+    message: str

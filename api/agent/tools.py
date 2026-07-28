@@ -55,3 +55,23 @@ def create_booking(trip_id: str, kind: str, details: dict, rules: dict) -> dict:
     }).execute().data[0]
 
     return {"id": row["id"], "status": status, "violations": check.violations}
+
+
+@tool
+def check_disruptions(trip_id: str) -> list[dict]:
+    """Check a trip's flight bookings for disruptions (delays/cancellations).
+    Returns only the bookings that are actually affected."""
+    db = get_db()
+    bookings = (
+        db.table("bookings").select("id, kind, details").eq("trip_id", trip_id).execute().data
+    )
+    disruptions = []
+    for booking in bookings:
+        if booking["kind"] != "flight":
+            continue
+        disruption = _duffel.get_disruption(booking["details"])
+        if disruption is not None:
+            disruptions.append(
+                {"booking_id": booking["id"], "type": disruption.type, "message": disruption.message}
+            )
+    return disruptions
