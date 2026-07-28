@@ -27,10 +27,7 @@ def extract_reply_text(content: str | list) -> str:
     )
 
 
-@router.post("/trips/{trip_id}/messages")
-def post_message(trip_id: str, message: MessageIn) -> dict:
-    db = get_db()
-
+def handle_chat_message(db, trip_id: str, content: str) -> str:
     trips = db.table("trips").select("company_id").eq("id", trip_id).execute().data
     if not trips:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -45,7 +42,7 @@ def post_message(trip_id: str, message: MessageIn) -> dict:
     rules = policies[0]["rules"]
 
     db.table("trip_messages").insert(
-        {"trip_id": trip_id, "role": "user", "content": message.content}
+        {"trip_id": trip_id, "role": "user", "content": content}
     ).execute()
 
     # History includes the just-inserted user message (last), so we don't append it again.
@@ -75,4 +72,11 @@ def post_message(trip_id: str, message: MessageIn) -> dict:
         {"trip_id": trip_id, "role": "assistant", "content": reply}
     ).execute()
 
+    return reply
+
+
+@router.post("/trips/{trip_id}/messages")
+def post_message(trip_id: str, message: MessageIn) -> dict:
+    db = get_db()
+    reply = handle_chat_message(db, trip_id, message.content)
     return {"reply": reply}

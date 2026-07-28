@@ -79,6 +79,12 @@ def seed() -> None:
         "rules": ACME_RULES,
     }).execute()
 
+    db.table("licensees").delete().eq("name", "Wayfare Web (internal)").execute()
+    licensee = db.table("licensees").insert({
+        "name": "Wayfare Web (internal)",
+        "api_key": f"wf_live_{uuid.uuid4().hex}",
+    }).execute().data[0]
+
     # Jordan Lee is the demo login user (employees[0]).
     jordan = employees[0]
     auth_user_id = _create_demo_auth_user(db)
@@ -96,6 +102,7 @@ def seed() -> None:
     print(
         f"Demo login: {DEMO_LOGIN_EMAIL} / {DEMO_LOGIN_PASSWORD}  ->  trip id: {trip['id']}"
     )
+    print(f"Licensee API key: {licensee['api_key']}")
 
 
 if __name__ == "__main__":
