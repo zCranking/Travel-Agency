@@ -1,12 +1,14 @@
 from langchain_core.tools import tool
 
 from core.db import get_db
+from expense.sync_client import MockExpenseSyncClient
 from policy.retrieval import answer_why
 from policy.rules import check_rules
 from travel.duffel_client import MockDuffelClient
 from travel.models import FlightOption, HotelOption
 
 _duffel = MockDuffelClient()
+_expense = MockExpenseSyncClient()
 
 
 @tool
@@ -53,6 +55,12 @@ def create_booking(trip_id: str, kind: str, details: dict, rules: dict) -> dict:
         "price_cents": price_cents,
         "status": status,
     }).execute().data[0]
+
+    if status == "booked":
+        try:
+            _expense.sync_booking(row)
+        except Exception:  # noqa: BLE001, S110
+            pass  # best-effort: sync failure must never block a completed booking
 
     return {"id": row["id"], "status": status, "violations": check.violations}
 
