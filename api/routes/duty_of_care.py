@@ -1,3 +1,5 @@
+import hashlib
+
 from fastapi import APIRouter
 
 from core.db import get_db
@@ -11,7 +13,8 @@ def _mock_risk_level(destination: str) -> str:
     """Placeholder risk data -- deterministic from the destination string,
     NOT a real risk feed (no Riskline/equivalent integration exists yet).
     The frontend must label this as placeholder, never real intelligence."""
-    return _RISK_LEVELS[hash(destination) % len(_RISK_LEVELS)]
+    digest = hashlib.md5(destination.encode()).digest()
+    return _RISK_LEVELS[digest[0] % len(_RISK_LEVELS)]
 
 
 @router.get("/duty-of-care")
