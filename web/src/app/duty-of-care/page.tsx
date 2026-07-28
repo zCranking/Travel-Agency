@@ -13,7 +13,7 @@ type DutyOfCareRow = {
     trip_id: string;
     destination: string;
     risk_level: RiskLevel;
-    bookings: { id: string; kind: "flight" | "hotel"; status: string }[];
+    bookings: { id: string; kind: "flight" | "hotel"; details: Record<string, unknown>; status: string }[];
   } | null;
 };
 
@@ -21,6 +21,12 @@ const RISK_STYLES: Record<RiskLevel, string> = {
   low: "bg-[var(--color-teal)]",
   medium: "bg-[var(--color-amber)]",
   high: "bg-[var(--color-coral)]",
+};
+
+const RISK_TEXT: Record<RiskLevel, string> = {
+  low: "text-white",
+  medium: "text-[var(--color-ink)]",
+  high: "text-white",
 };
 
 const RISK_LABELS: Record<RiskLevel, string> = {
@@ -88,7 +94,7 @@ export default function DutyOfCarePage() {
             {row.trip && (
               <div className="flex flex-col items-end gap-0.5">
                 <span
-                  className={`rounded-full px-2.5 py-0.5 font-sans text-xs font-semibold text-white ${RISK_STYLES[row.trip.risk_level]}`}
+                  className={`rounded-full px-2.5 py-0.5 font-sans text-xs font-semibold ${RISK_STYLES[row.trip.risk_level]} ${RISK_TEXT[row.trip.risk_level]}`}
                 >
                   {RISK_LABELS[row.trip.risk_level]}
                 </span>
