@@ -12,6 +12,21 @@ class MessageIn(BaseModel):
     content: str
 
 
+def extract_reply_text(content: str | list) -> str:
+    """Claude's message content is a plain string for simple replies, but a
+    list of content blocks (thinking/text/tool_use) whenever extended
+    thinking is involved. Only text blocks are a reply; thinking blocks
+    carry an internal reasoning signature that must never reach the client.
+    """
+    if isinstance(content, str):
+        return content
+    return "".join(
+        block.get("text", "")
+        for block in content
+        if isinstance(block, dict) and block.get("type") == "text"
+    )
+
+
 @router.post("/trips/{trip_id}/messages")
 def post_message(trip_id: str, message: MessageIn) -> dict:
     db = get_db()
@@ -54,7 +69,7 @@ def post_message(trip_id: str, message: MessageIn) -> dict:
     ]
 
     result = _graph.invoke({"messages": messages})
-    reply = result["messages"][-1].content
+    reply = extract_reply_text(result["messages"][-1].content)
 
     db.table("trip_messages").insert(
         {"trip_id": trip_id, "role": "assistant", "content": reply}

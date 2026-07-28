@@ -64,6 +64,32 @@ def test_post_message_passes_context_and_history(mock_get_db, mock_graph):
 
 @patch("routes.chat._graph")
 @patch("routes.chat.get_db")
+def test_post_message_extracts_text_from_thinking_block_reply(mock_get_db, mock_graph):
+    """Claude with extended thinking returns content as a list of blocks
+    (thinking + text), not a plain string. Only the text block's content is
+    a real reply; the thinking block carries an internal signature that must
+    never reach the client or get persisted to trip_messages.
+    """
+    mock_get_db.return_value = _mock_db([{"role": "user", "content": "hi"}])
+    mock_graph.invoke.return_value = {
+        "messages": [
+            AIMessage(
+                content=[
+                    {"type": "thinking", "thinking": "reasoning...", "signature": "abc123"},
+                    {"type": "text", "text": "Here's your answer."},
+                ]
+            )
+        ]
+    }
+
+    response = client.post("/trips/trip-1/messages", json={"content": "hi"})
+
+    assert response.status_code == 200
+    assert response.json() == {"reply": "Here's your answer."}
+
+
+@patch("routes.chat._graph")
+@patch("routes.chat.get_db")
 def test_post_message_404_when_trip_missing(mock_get_db, mock_graph):
     db = MagicMock()
     db.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
