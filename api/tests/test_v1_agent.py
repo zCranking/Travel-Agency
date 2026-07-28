@@ -32,7 +32,11 @@ def test_v1_agent_message_success_with_valid_key(mock_get_db, mock_handle, mock_
         t = MagicMock()
         if name == "licensees":
             t.select.return_value.eq.return_value.execute.return_value.data = [
-                {"id": "lic-1", "name": "Wayfare Web"}
+                {"id": "lic-1", "name": "Wayfare Web", "company_id": "company-1"}
+            ]
+        elif name == "trips":
+            t.select.return_value.eq.return_value.execute.return_value.data = [
+                {"company_id": "company-1"}
             ]
         return t
 
@@ -50,3 +54,37 @@ def test_v1_agent_message_success_with_valid_key(mock_get_db, mock_handle, mock_
     assert response.status_code == 200
     assert response.json() == {"reply": "hello from the agent"}
     mock_handle.assert_called_once_with(db, "trip-1", "hi")
+
+
+@patch("core.licensee_auth.get_db")
+@patch("routes.v1_agent.handle_chat_message")
+@patch("routes.v1_agent.get_db")
+def test_v1_agent_message_rejects_trip_from_different_company(
+    mock_get_db, mock_handle, mock_licensee_db
+):
+    db = MagicMock()
+
+    def table(name):
+        t = MagicMock()
+        if name == "licensees":
+            t.select.return_value.eq.return_value.execute.return_value.data = [
+                {"id": "lic-1", "name": "Wayfare Web", "company_id": "company-1"}
+            ]
+        elif name == "trips":
+            t.select.return_value.eq.return_value.execute.return_value.data = [
+                {"company_id": "company-2"}
+            ]
+        return t
+
+    db.table.side_effect = table
+    mock_get_db.return_value = db
+    mock_licensee_db.return_value = db
+
+    response = client.post(
+        "/v1/agent/message",
+        json={"trip_id": "trip-1", "content": "hi"},
+        headers={"X-API-Key": "real-key"},
+    )
+
+    assert response.status_code == 403
+    mock_handle.assert_not_called()

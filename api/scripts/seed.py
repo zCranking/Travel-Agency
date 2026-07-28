@@ -82,6 +82,7 @@ def seed() -> None:
     db.table("licensees").delete().eq("name", "Wayfare Web (internal)").execute()
     licensee = db.table("licensees").insert({
         "name": "Wayfare Web (internal)",
+        "company_id": company_id,
         "api_key": f"wf_live_{uuid.uuid4().hex}",
     }).execute().data[0]
 
