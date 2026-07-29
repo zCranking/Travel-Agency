@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes.bookings import router as bookings_router
 from routes.chat import router as chat_router
 from routes.duty_of_care import router as duty_of_care_router
+from routes.planning import router as planning_router
 from routes.v1_agent import router as v1_agent_router
 
 app = FastAPI(title="Wayfare API")
@@ -21,6 +22,7 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(bookings_router)
 app.include_router(duty_of_care_router)
+app.include_router(planning_router)
 app.include_router(v1_agent_router)
 
 

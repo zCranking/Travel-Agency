@@ -60,3 +60,6 @@ Three rules live testing proved necessary — don't undo them:
 - No MCP tool-wiring layer yet — tools are plain Python functions bound into the
   LangGraph graph. Revisit if/when a second agent needs to share tool infra.
 - UI changes go through the `frontend-design` skill, not generic shadcn defaults.
+<!-- codeburn:begin read-edit-ratio -->
+Before editing any file, read it first. Before modifying a function, grep for all callers. Research before you edit.
+<!-- codeburn:end read-edit-ratio -->
