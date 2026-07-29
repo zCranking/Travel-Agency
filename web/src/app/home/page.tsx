@@ -200,9 +200,14 @@ export default function HomePage() {
             aria-hidden
             className="absolute inset-0 bg-[linear-gradient(90deg,rgba(20,30,45,0.78)_0%,rgba(20,30,45,0.32)_62%,rgba(20,30,45,0.06)_100%)]"
           />
-          <div className="absolute inset-x-8 top-5 flex items-center">
+          <div className="absolute inset-x-8 top-5 flex items-center gap-2.5">
+            <Link href="/plan">
+              <span className="rounded-[10px] bg-(--color-amber) px-[18px] py-2.5 font-sans text-sm font-semibold text-(--color-ink) transition-[filter] duration-(--duration-quick) hover:brightness-95">
+                Plan a trip
+              </span>
+            </Link>
             <Link href="/itinerary">
-              <span className="rounded-[10px] bg-[var(--color-amber)] px-[18px] py-2.5 font-sans text-sm font-semibold text-[var(--color-ink)] transition-[filter] duration-[var(--duration-quick)] hover:brightness-95">
+              <span className="rounded-[10px] bg-white/12 px-[18px] py-2.5 font-sans text-sm font-semibold text-white transition-colors duration-(--duration-quick) hover:bg-white/20">
                 Review trips
               </span>
             </Link>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, MessageCircle, ShieldCheck, Ticket } from "lucide-react";
+import { CalendarClock, Home, MessageCircle, ShieldCheck, Ticket } from "lucide-react";
 import { supabaseBrowserClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 // add each when it has a page behind it.
 const NAV = [
   { href: "/home", label: "Home", icon: Home },
+  { href: "/plan", label: "Plan", icon: CalendarClock },
   { href: "/itinerary", label: "Trips", icon: Ticket },
   { href: "/duty-of-care", label: "Duty of care", icon: ShieldCheck },
 ] as const;
