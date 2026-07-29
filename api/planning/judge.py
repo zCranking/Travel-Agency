@@ -8,12 +8,18 @@ The id validation is the Duffel offer-cache lesson generalised: a model
 referencing an id the server never issued is not an answer, it's an invention.
 """
 import json
+import logging
 
 from langchain_anthropic import ChatAnthropic
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from core.config import settings
 from planning.models import Itinerary, Ranking, TripIntent
+
+# Falling back is silent by design from the traveler's side — they still get a
+# ranked plan. It must not be silent from ours: a judge that has quietly
+# degraded to price order for a week looks exactly like a working judge.
+logger = logging.getLogger(__name__)
 
 _PROMPT = (
     "You are Wayfare's trip planner. Every itinerary below already satisfies "
@@ -28,6 +34,26 @@ _PROMPT = (
 
 class Rankings(BaseModel):
     rankings: list[Ranking]
+
+    @field_validator("rankings", mode="before")
+    @classmethod
+    def _accept_a_json_string(cls, value):
+        """Coerce the model's double-encoded output.
+
+        Observed live: on a payload of five itineraries the model filled the
+        `rankings` field with a *string* containing the whole JSON object
+        rather than a list, and structured-output parsing raised — which the
+        caller then swallowed into the price-order fallback, silently. Same
+        species as the offer cache: don't trust the model's serialisation,
+        normalise it at the boundary.
+        """
+        if not isinstance(value, str):
+            return value
+        try:
+            parsed = json.loads(value)
+        except ValueError:
+            return value
+        return parsed.get("rankings", parsed) if isinstance(parsed, dict) else parsed
 
 
 def _model():
@@ -99,10 +125,16 @@ def judge(itineraries: list[Itinerary], intent: TripIntent) -> list[Ranking]:
                 [{"role": "system", "content": _PROMPT},
                  {"role": "user", "content": payload}]
             )
-        except Exception:  # noqa: BLE001 — any model failure degrades, never raises
-            break
+        except Exception:  # any model failure degrades to price order, never raises
+            logger.warning("judge model call failed, retrying", exc_info=True)
+            continue
         rankings = list(result.rankings)
         if rankings and all(r.itinerary_id in known for r in rankings):
             return sorted(rankings, key=lambda r: r.rank)
+        logger.warning(
+            "judge returned %d rankings referencing unknown itinerary ids",
+            len(rankings),
+        )
 
+    logger.warning("judge falling back to price order for %d itineraries", len(itineraries))
     return _by_price(itineraries)

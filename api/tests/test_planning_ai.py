@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, date, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -204,3 +205,44 @@ def test_interpret_returns_an_empty_draft_when_the_model_fails(mock_model):
 
     assert draft.meetings == []
     assert draft.unresolved      # says so, rather than silently returning nothing
+
+
+def test_rankings_coerces_the_models_double_encoded_json_string():
+    """Observed live: on a five-itinerary payload the model filled `rankings`
+    with a string containing the whole JSON object instead of a list, and the
+    parse error was swallowed into the price-order fallback silently."""
+    from planning.judge import Rankings
+
+    parsed = Rankings.model_validate({"rankings": json.dumps({"rankings": [
+        {"itinerary_id": "a", "rank": 1, "rationale": "Cheapest", "concerns": []},
+    ]})})
+
+    assert [r.itinerary_id for r in parsed.rankings] == ["a"]
+
+
+def test_rankings_coerces_a_bare_json_list_string():
+    from planning.judge import Rankings
+
+    parsed = Rankings.model_validate({"rankings": json.dumps([
+        {"itinerary_id": "b", "rank": 1, "rationale": "Fastest", "concerns": []},
+    ])})
+
+    assert [r.itinerary_id for r in parsed.rankings] == ["b"]
+
+
+@patch("planning.judge._model")
+def test_judge_retries_after_a_model_exception_before_falling_back(mock_model):
+    """A transient schema slip is worth one more attempt -- the first failure
+    used to break straight out to the fallback."""
+    mock_model.return_value.invoke.side_effect = [
+        RuntimeError("schema slip"),
+        MagicMock(rankings=[
+            Ranking(itinerary_id="b", rank=1, rationale="Better timing"),
+            Ranking(itinerary_id="a", rank=2, rationale="Backup"),
+        ]),
+    ]
+
+    result = judge([itinerary("a"), itinerary("b")], TripIntent(origin_city="SFO"))
+
+    assert [r.itinerary_id for r in result] == ["b", "a"]
+    assert mock_model.return_value.invoke.call_count == 2
