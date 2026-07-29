@@ -29,9 +29,17 @@ export type Booking = (FlightBooking | HotelBooking) & {
 };
 
 const STATUS = {
-  booked: { label: "BKD", bg: "bg-[var(--color-teal)]" },
-  pending_approval: { label: "PEND", bg: "bg-[var(--color-coral)]" },
-  rejected: { label: "REJ", bg: "bg-[var(--color-slate)]" },
+  booked: { label: "BKD", mark: "✓", bg: "bg-[var(--color-teal)] text-white" },
+  pending_approval: {
+    label: "PEND",
+    mark: "…",
+    bg: "bg-[var(--color-coral)] text-white",
+  },
+  rejected: {
+    label: "REJ",
+    mark: "✕",
+    bg: "bg-[var(--color-slate)] text-white",
+  },
 } as const;
 
 function money(cents: number): string {
@@ -51,27 +59,12 @@ function formatDate(iso: string): string {
 }
 
 /**
- * Boarding-pass-stub card. Signature element shared by the chat inline results
- * and the Task 11 itinerary page: a torn ticket with a main stub and a rotated
- * status stub.
- *
- * `onApprove`/`onReject` are only used by the itinerary page: when both are
- * supplied and status is `pending_approval`, plain text-style action buttons
- * render under the card (design-direction "trust surface").
+ * Boarding-pass stub — the signature element the whole design hangs on. A main
+ * stub with the trip detail, a perforation, and a rotated status stamp.
  */
-export function BookingCard({
-  booking,
-  onApprove,
-  onReject,
-}: {
-  booking: Booking;
-  onApprove?: () => void;
-  onReject?: () => void;
-}) {
+export function BookingCard({ booking }: { booking: Booking }) {
   const status = booking.status ?? "booked";
-  const { label, bg } = STATUS[status];
-  const showActions =
-    status === "pending_approval" && !!onApprove && !!onReject;
+  const { label, mark, bg } = STATUS[status];
 
   const title = booking.kind === "flight" ? booking.airline : booking.name;
   const subLabel =
@@ -90,67 +83,45 @@ export function BookingCard({
       : `${money(booking.nightly_rate_cents)}/night`;
 
   return (
-    <div>
-    <div className="flex overflow-hidden rounded-lg bg-[var(--color-paper)] shadow-[0_1px_3px_rgba(27,42,65,0.08)]">
-      {/* main stub */}
-      <div className="flex-1 p-4">
+    <div className="flex overflow-hidden rounded-xl bg-[var(--color-paper)] shadow-[0_1px_3px_rgba(27,42,65,0.08)]">
+      <div className="flex-1 p-5">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="font-sans text-base font-bold text-[var(--color-ink)]">
+          <span className="font-sans text-[17px] font-bold text-[var(--color-ink)]">
             {title}
           </span>
-          <span className="font-mono text-xs uppercase tracking-wide text-[var(--color-slate)]">
+          <span className="font-mono text-xs uppercase text-[var(--color-slate)]">
             {subLabel}
           </span>
         </div>
-        <div className="mt-1 font-mono text-sm text-[var(--color-ink)]">
+        <div className="mt-1.5 font-mono text-[15px] text-[var(--color-ink)]">
           {route}
         </div>
-        <div className="mt-1 flex items-baseline justify-between gap-3 font-mono text-sm text-[var(--color-ink)]">
+        <div className="mt-1.5 flex items-baseline justify-between gap-3 font-mono text-sm text-[var(--color-ink)]">
           <span>{when}</span>
-          <span className="font-medium">{price}</span>
+          <span className="font-semibold">{price}</span>
         </div>
-        <div className="mt-3 border-t border-dashed border-[var(--color-slate)] pt-2 font-mono text-xs text-[var(--color-slate)]">
-          CONF&nbsp;&nbsp;{booking.confirmation_code ?? "—"}
+        <div className="mt-3 border-t border-dashed border-[#cfc9bd] pt-2 font-mono text-xs text-[var(--color-slate)]">
+          CONF&nbsp;&nbsp;
+          {booking.confirmation_code ??
+            (status === "pending_approval" ? "— · awaiting approval" : "—")}
         </div>
       </div>
 
-      {/* perforation + status stub */}
-      <div className="flex items-center border-l-2 border-dashed border-[var(--color-slate)]">
+      <div className="flex items-center border-l-2 border-dashed border-[#cfc9bd]">
         <div
           className={cn(
-            "m-2 flex flex-col items-center gap-0.5 rounded px-2 py-3 text-white",
+            "m-2 flex -rotate-2 flex-col items-center gap-0.5 rounded-[5px] px-2.5 py-3.5",
             bg,
           )}
-          style={{ transform: "rotate(-2deg)" }}
         >
           <span aria-hidden className="text-sm leading-none">
-            {status === "booked" ? "✓" : status === "rejected" ? "✕" : "…"}
+            {mark}
           </span>
-          <span className="font-mono text-[10px] font-semibold tracking-wider">
+          <span className="font-mono text-[10px] font-semibold tracking-[0.06em]">
             {label}
           </span>
         </div>
       </div>
-    </div>
-
-      {showActions && (
-        <div className="mt-2 flex gap-4 px-1 font-sans text-sm">
-          <button
-            type="button"
-            onClick={onApprove}
-            className="font-medium text-[var(--color-teal)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-amber)]"
-          >
-            Approve
-          </button>
-          <button
-            type="button"
-            onClick={onReject}
-            className="rounded border border-[var(--color-slate)] px-2 text-[var(--color-slate)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-amber)]"
-          >
-            Reject
-          </button>
-        </div>
-      )}
     </div>
   );
 }

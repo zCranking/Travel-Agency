@@ -16,7 +16,7 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
 
-    const { data, error } = await supabaseBrowserClient.auth.signInWithPassword({
+    const { error } = await supabaseBrowserClient.auth.signInWithPassword({
       email,
       password,
     });
@@ -26,22 +26,7 @@ export default function LoginPage() {
       return;
     }
 
-    const { data: employee } = await supabaseBrowserClient
-      .from("employees")
-      .select("id")
-      .eq("auth_user_id", data.user.id)
-      .single();
-
-    const { data: trip } = employee
-      ? await supabaseBrowserClient
-          .from("trips")
-          .select("id")
-          .eq("employee_id", employee.id)
-          .limit(1)
-          .single()
-      : { data: null };
-
-    router.push(trip ? `/chat/${trip.id}` : "/itinerary");
+    router.push("/home");
   }
 
   return (

@@ -17,12 +17,17 @@ export function MessageList({ messages }: { messages: Message[] }) {
   }, [messages.length]);
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-6">
       {messages.length === 0 && (
-        <p className="mx-auto max-w-prose text-center font-sans text-sm text-[var(--color-slate)]">
-          Tell me where you need to go — e.g. &ldquo;find me a flight from SFO to
-          JFK on Sep 1.&rdquo;
-        </p>
+        <div className="m-auto max-w-[420px] text-center">
+          <p className="font-display text-lg font-semibold text-[var(--color-ink)]">
+            Where do you need to be?
+          </p>
+          <p className="mt-1.5 font-sans text-sm text-[var(--color-slate)]">
+            Say it in plain English — &ldquo;a flight from SFO to JFK on Sep
+            1&rdquo; — and Wayfare searches, checks policy, and books it.
+          </p>
+        </div>
       )}
       {messages.map((m, i) =>
         m.role === "assistant" ? (

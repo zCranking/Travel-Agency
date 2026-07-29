@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { supabaseBrowserClient } from "@/lib/supabase";
 import { MessageList, type Message } from "@/components/chat/message-list";
 import { MessageInput } from "@/components/chat/message-input";
+import { AppShell } from "@/components/app-shell";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
@@ -66,28 +67,24 @@ export default function ChatPage({
   );
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[640px] flex-col bg-white">
-      <header className="flex items-baseline justify-between bg-[var(--color-ink)] px-4 py-3 text-white">
-        <span className="font-display text-lg font-bold tracking-tight">
-          Wayfare
-        </span>
-        <span className="font-mono text-xs text-white/60">
-          Trip {tripId.slice(0, 8)}
-        </span>
-      </header>
+    <AppShell title="Plan a trip" meta={`TRIP ${tripId.slice(0, 8)}`}>
+      <div className="mx-auto flex min-h-0 w-full max-w-[760px] flex-1 flex-col">
+        <MessageList messages={messages} />
 
-      <MessageList messages={messages} />
+        {error && (
+          <p
+            role="alert"
+            className="mx-6 mb-2 flex items-center gap-2.5 rounded-xl border border-[rgba(193,84,60,0.35)] border-l-[3px] border-l-[var(--color-coral)] bg-white px-4 py-3 font-sans text-sm text-[var(--color-ink)]"
+          >
+            <span aria-hidden className="font-semibold text-[var(--color-coral)]">
+              !
+            </span>
+            {error}
+          </p>
+        )}
 
-      {error && (
-        <p
-          role="alert"
-          className="px-4 py-2 font-sans text-sm text-[var(--color-coral)]"
-        >
-          {error}
-        </p>
-      )}
-
-      <MessageInput onSend={handleSend} disabled={sending} />
-    </div>
+        <MessageInput onSend={handleSend} disabled={sending} />
+      </div>
+    </AppShell>
   );
 }

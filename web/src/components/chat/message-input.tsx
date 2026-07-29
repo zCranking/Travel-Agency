@@ -25,7 +25,7 @@ export function MessageInput({
 
   return (
     <form
-      className="flex items-end gap-2 border-t border-[var(--color-paper)] bg-white px-4 py-3"
+      className="flex flex-none items-end gap-2 border-t border-[var(--color-line)] bg-white px-6 py-3.5"
       onSubmit={(e) => {
         e.preventDefault();
         submit();

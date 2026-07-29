@@ -19,9 +19,21 @@
   --color-teal: #2f6e63;
   --color-coral: #c1543c;
   --color-slate: #6b7280;
+  --color-mute: #9aa0a8;
+  /* Amber fails contrast as text on white — this is the readable stand-in. */
+  --color-amber-ink: #8a6410;
+  --color-line: rgba(27, 42, 65, 0.08);
+
+  /* Motion: UI feedback = quick, entering content = base, full-surface = deliberate. */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --duration-quick: 140ms;
+  --duration-base: 220ms;
+  --duration-deliberate: 560ms;
 
   --animate-message-in: message-in 150ms ease-out;
   --animate-stamp-in: stamp-in 200ms ease-out;
+  --animate-rise-in: rise-in var(--duration-base) var(--ease-decelerate);
 
   @keyframes message-in {
     from {
@@ -39,6 +51,16 @@
     }
     to {
       transform: rotate(-2deg) scale(1);
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
   --color-sidebar-ring: var(--sidebar-ring);
