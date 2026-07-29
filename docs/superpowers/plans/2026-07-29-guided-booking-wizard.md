@@ -1,5 +1,9 @@
 # Guided Booking Wizard Implementation Plan
 
+> **SUPERSEDED (2026-07-29), never executed.** See
+> `docs/superpowers/plans/2026-07-29-constraint-planner.md`. Reasoning in the
+> banner on this plan's spec.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a second, non-chat way to book a trip — a step-by-step guided wizard (Trip basics → Flight → Hotel → Review, with a progress stepper) — alongside the existing chat flow, with a "Plan a trip" entry point (which doesn't exist in the UI today) and a button to switch between the two modes for the same trip at any time.

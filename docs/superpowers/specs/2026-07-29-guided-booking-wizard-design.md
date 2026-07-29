@@ -1,5 +1,15 @@
 # Guided Booking Wizard — Design
 
+> **SUPERSEDED (2026-07-29) by
+> `docs/superpowers/specs/2026-07-29-constraint-planner-design.md`, never
+> implemented.** The wizard was a deterministic form over the same three tool
+> calls the chat agent makes — which is exactly the observation that triggered
+> the pivot: if a form can replace the agent, the agent was decoration. The
+> constraint planner is the second front door instead, and it solves a problem
+> a form cannot. The one piece salvaged verbatim is `POST /trips`; the UI still
+> has no way to start a trip, and that was true regardless of which door it
+> opens onto.
+
 > Builds on `docs/superpowers/specs/2026-07-27-foundation-mvp-design.md` (chat +
 > itinerary, live) and `docs/superpowers/specs/2026-07-28-phase2-multiagent-design.md`
 > (multi-agent split, duty-of-care, licensing seam, all live). This spec adds a
