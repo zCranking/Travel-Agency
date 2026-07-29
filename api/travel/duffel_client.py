@@ -11,7 +11,9 @@ doesn't have; hotel search and disruption lookups delegate to the mock. Add
 Stays when a geocoding step earns its keep.
 """
 import uuid
+from datetime import datetime, time, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -48,23 +50,43 @@ _FARE_CLASSES = ["economy", "premium_economy", "business"]
 _AIRLINES = ["Skyward Air", "Continental Wing", "Pacific Crest"]
 _HOTEL_BRANDS = ["Harborview Inn", "Cedar & Vine Hotel", "Meridian Suites"]
 
+# Fixture schedule: an early, a midday and an evening departure, so a presence
+# window ("be in Chicago by 2pm") actually discriminates between them instead
+# of accepting or rejecting all three together.
+_MOCK_DEPART_HOURS = [7, 12, 19]
+_MOCK_DURATIONS_H = [4, 5, 4]
+_MOCK_STOPS = [0, 1, 0]
+# ponytail: one zone for every mock airport. Real zones need an airport->tz
+# table the mock has no reason to carry; RealDuffelClient gets them from Duffel.
+_MOCK_ZONE = ZoneInfo("America/Los_Angeles")
+
 
 class MockDuffelClient:
     def search_flights(
         self, origin: str, destination: str, depart_date: str
     ) -> list[FlightOption]:
-        return [
-            FlightOption(
-                id=str(uuid.uuid4()),
-                airline=_AIRLINES[i % len(_AIRLINES)],
-                fare_class=_FARE_CLASSES[i % len(_FARE_CLASSES)],
-                origin=origin,
-                destination=destination,
-                depart_date=depart_date,
-                price_cents=28000 + i * 15000,
+        day = datetime.fromisoformat(depart_date).date()
+        options = []
+        for i in range(3):
+            depart = datetime.combine(
+                day, time(_MOCK_DEPART_HOURS[i]), tzinfo=_MOCK_ZONE
             )
-            for i in range(3)
-        ]
+            arrive = depart + timedelta(hours=_MOCK_DURATIONS_H[i])
+            options.append(
+                FlightOption(
+                    id=str(uuid.uuid4()),
+                    airline=_AIRLINES[i % len(_AIRLINES)],
+                    fare_class=_FARE_CLASSES[i % len(_FARE_CLASSES)],
+                    origin=origin,
+                    destination=destination,
+                    depart_date=depart_date,
+                    price_cents=28000 + i * 15000,
+                    depart_at=depart.isoformat(),
+                    arrive_at=arrive.isoformat(),
+                    stops=_MOCK_STOPS[i],
+                )
+            )
+        return options
 
     def search_hotels(
         self, location: str, check_in: str, check_out: str
@@ -235,20 +257,25 @@ class RealDuffelClient:
         passenger_ids = [p["id"] for p in data.get("passengers", [])]
         offers = sorted(data.get("offers", []), key=lambda o: Decimal(o["total_amount"]))
 
-        options = [
-            FlightOption(
-                id=offer["id"],
-                airline=offer["owner"]["name"],
-                fare_class=_cabin_class(offer),
-                origin=origin,
-                destination=destination,
-                depart_date=depart_date,
-                price_cents=_to_cents(offer["total_amount"]),
-                passenger_ids=passenger_ids,
-                currency=offer["total_currency"],
+        options = []
+        for offer in offers[:_MAX_OFFERS]:
+            depart_at, arrive_at, stops = _leg_times(offer)
+            options.append(
+                FlightOption(
+                    id=offer["id"],
+                    airline=offer["owner"]["name"],
+                    fare_class=_cabin_class(offer),
+                    origin=origin,
+                    destination=destination,
+                    depart_date=depart_date,
+                    price_cents=_to_cents(offer["total_amount"]),
+                    passenger_ids=passenger_ids,
+                    currency=offer["total_currency"],
+                    depart_at=depart_at,
+                    arrive_at=arrive_at,
+                    stops=stops,
+                )
             )
-            for offer in offers[:_MAX_OFFERS]
-        ]
         for option in options:
             _OFFER_CACHE[option.id] = option
         return options
@@ -330,6 +357,38 @@ def _cabin_class(offer: dict) -> str:
         return segment["passengers"][0]["cabin_class"] or "first"
     except (KeyError, IndexError, TypeError):
         return "first"
+
+
+def _at(segment: dict, which: str) -> str:
+    """Stitch a Duffel segment time to its airport's zone.
+
+    Duffel sends `departing_at` as a naive local string ("2026-09-01T07:30:00")
+    and puts the IANA zone on the airport object. Neither half is usable alone:
+    comparing a Chicago wall clock to a Denver one is how you plan a trip that
+    misses the meeting.
+    """
+    endpoint = "origin" if which == "departing_at" else "destination"
+    zone = ZoneInfo(segment[endpoint]["time_zone"])
+    return datetime.fromisoformat(segment[which]).replace(tzinfo=zone).isoformat()
+
+
+def _leg_times(offer: dict) -> tuple[str, str, int]:
+    """(depart_at, arrive_at, stops) across the whole journey.
+
+    Returns blanks rather than raising on a malformed offer — an offer with no
+    readable schedule is still bookable through the chat path, it just can't
+    take part in constraint solving. Failing the whole search would be a worse
+    trade than degrading one option.
+    """
+    try:
+        segments = offer["slices"][0]["segments"]
+        return (
+            _at(segments[0], "departing_at"),
+            _at(segments[-1], "arriving_at"),
+            len(segments) - 1,
+        )
+    except (KeyError, IndexError, TypeError, ValueError):
+        return "", "", 0
 
 
 def get_duffel_client() -> MockDuffelClient | RealDuffelClient:

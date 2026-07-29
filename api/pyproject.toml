@@ -12,6 +12,10 @@ dependencies = [
     "voyageai>=0.3",
     "python-dotenv>=1.0",
     "httpx>=0.27",
+    # Windows ships no system tz database, so zoneinfo needs this to resolve
+    # IANA keys. The planner compares meeting and flight instants across
+    # zones, so it is not optional here.
+    "tzdata>=2024.1",
 ]
 
 [project.optional-dependencies]
@@ -23,4 +27,4 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["core*", "travel*", "policy*", "agent*", "evals*"]
+include = ["core*", "travel*", "policy*", "agent*", "evals*", "planning*", "routes*"]

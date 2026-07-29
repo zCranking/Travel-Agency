@@ -324,3 +324,58 @@ def test_get_duffel_client_returns_real_client_with_a_token():
         mock_settings.duffel_access_token = TEST_TOKEN
         mock_settings.duffel_allow_live_booking = False
         assert isinstance(get_duffel_client(), RealDuffelClient)
+
+
+@patch("travel.duffel_client.httpx.post")
+def test_search_flights_attaches_airport_timezones_to_segment_times(mock_post):
+    """Duffel reports segment times as naive local strings and the zone on the
+    airport. Without stitching them the solver would compare a Chicago clock to
+    a San Francisco one."""
+    _ok(mock_post, {"data": {
+        "passengers": [{"id": "pas_1"}],
+        "offers": [{
+            "id": "off_1",
+            "total_amount": "310.00",
+            "total_currency": "USD",
+            "owner": {"name": "United"},
+            "slices": [{"segments": [
+                {
+                    "departing_at": "2026-09-01T07:30:00",
+                    "arriving_at": "2026-09-01T11:20:00",
+                    "origin": {"iata_code": "SFO", "time_zone": "America/Los_Angeles"},
+                    "destination": {"iata_code": "DEN", "time_zone": "America/Denver"},
+                    "passengers": [{"cabin_class": "economy"}],
+                },
+                {
+                    "departing_at": "2026-09-01T12:40:00",
+                    "arriving_at": "2026-09-01T16:05:00",
+                    "origin": {"iata_code": "DEN", "time_zone": "America/Denver"},
+                    "destination": {"iata_code": "ORD", "time_zone": "America/Chicago"},
+                    "passengers": [{"cabin_class": "economy"}],
+                },
+            ]}],
+        }],
+    }})
+
+    option = _client().search_flights("SFO", "ORD", "2026-09-01")[0]
+
+    assert option.depart_at == "2026-09-01T07:30:00-07:00"   # first segment out
+    assert option.arrive_at == "2026-09-01T16:05:00-05:00"   # last segment in
+    assert option.stops == 1                                  # two segments, one stop
+
+
+@patch("travel.duffel_client.httpx.post")
+def test_search_flights_survives_an_offer_with_no_segment_times(mock_post):
+    """Blank instants, not a crash: the offer is still bookable, it just can't
+    participate in constraint solving."""
+    _ok(mock_post, {"data": {
+        "passengers": [{"id": "pas_1"}],
+        "offers": [{
+            "id": "off_1", "total_amount": "310.00", "total_currency": "USD",
+            "owner": {"name": "United"}, "slices": [],
+        }],
+    }})
+
+    option = _client().search_flights("SFO", "ORD", "2026-09-01")[0]
+
+    assert (option.depart_at, option.arrive_at, option.stops) == ("", "", 0)

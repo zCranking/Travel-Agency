@@ -14,6 +14,14 @@ class FlightOption(BaseModel):
     # Empty for mock options, which is how `book()` tells the two apart.
     passenger_ids: list[str] = []
     currency: str = "USD"
+    # ISO 8601 *with* offset. A solver reasoning about "land before the 2pm
+    # meeting" needs an instant, not a date; the offset is what makes a Denver
+    # arrival and a Chicago meeting comparable. Blank when the source doesn't
+    # supply times (seeded rows, older fixtures) — such an option is still
+    # bookable through chat, it just can't take part in constraint solving.
+    depart_at: str = ""
+    arrive_at: str = ""
+    stops: int = 0
 
 
 class HotelOption(BaseModel):
