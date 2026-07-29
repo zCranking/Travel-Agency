@@ -51,7 +51,7 @@ def test_get_traveler_returns_none_for_unknown_trip():
 @patch("travel.ticketing.get_duffel_client")
 def test_issue_ticket_adds_confirmation_code_to_details(mock_get_client):
     mock_get_client.return_value.book.return_value = MagicMock(
-        confirmation_code="PNR999"
+        confirmation_code="PNR999", price_cents=31000
     )
     db = _db([{"employee_id": "emp-1"}], [
         {"email": "jordan@acme-demo.test", "traveler_profile": PROFILE}
@@ -60,6 +60,7 @@ def test_issue_ticket_adds_confirmation_code_to_details(mock_get_client):
     details = issue_ticket(db, "trip-1", "flight", FLIGHT)
 
     assert details == {**FLIGHT, "confirmation_code": "PNR999"}
+    assert details["price_cents"] == 31000
     # the traveler payload reaches the supplier — booking without it would
     # either fail at Duffel or ticket the wrong person
     _option, traveler = mock_get_client.return_value.book.call_args[0]

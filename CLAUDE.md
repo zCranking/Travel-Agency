@@ -42,6 +42,19 @@ confirmation. Ticketing happens *before* the row is written/updated. A
 `duffel_live_*` token additionally requires `DUFFEL_ALLOW_LIVE_BOOKING=true`
 before any order is created; unrecognised token prefixes are treated as live.
 
+Three rules live testing proved necessary — don't undo them:
+- **Never trust the model's copy of an offer.** The agent re-types options into
+  `create_booking` and will invent offer ids and drop `passenger_ids`. Search
+  caches offers in `_OFFER_CACHE`; `book()` resolves by id from there and
+  raises `UnknownOfferError` for anything never offered. Price comes from the
+  supplier's confirmation, not from `details`.
+- **`RealDuffelClient` must never fall back to the mock for a flight.** A
+  `WF********` code on a `booked` row is a phantom booking.
+- **Expected supplier failures are returned, not raised.** LangGraph's default
+  tool-error handler re-raises anything that isn't a `ToolInvocationError`,
+  which 500s the chat. `search_travel`/`create_booking` return the message so
+  the agent re-searches — it recovers from stale fares on its own this way.
+
 ## Conventions
 - One demo company only in this build — do not add multi-tenant admin UI.
 - No MCP tool-wiring layer yet — tools are plain Python functions bound into the

@@ -4,6 +4,7 @@ import httpx
 from fastapi.testclient import TestClient
 
 from main import app
+from travel.duffel_client import DuffelAPIError
 
 client = TestClient(app)
 
@@ -56,15 +57,30 @@ def test_approve_booking_is_idempotent_and_does_not_double_ticket(mock_get_db, m
 @patch("routes.bookings.get_db")
 def test_approve_booking_409s_when_fare_expired(mock_get_db, mock_issue):
     table = _select_returns(mock_get_db, [PENDING])
-    mock_issue.side_effect = httpx.HTTPStatusError(
-        "expired", request=httpx.Request("POST", "https://api.duffel.com"),
-        response=httpx.Response(422),
+    mock_issue.side_effect = DuffelAPIError(
+        code="offer_no_longer_available",
+        message="Please select another offer.",
+        status_code=422,
     )
 
     response = client.post("/bookings/b1/approve")
 
     assert response.status_code == 409
+    # Duffel's own reason reaches the manager, not just a generic failure
+    assert "Please select another offer." in response.json()["detail"]
     # the row must NOT be marked booked when ticketing failed
+    table.update.assert_not_called()
+
+
+@patch("routes.bookings.issue_ticket")
+@patch("routes.bookings.get_db")
+def test_approve_booking_504s_and_does_not_mark_booked_on_timeout(mock_get_db, mock_issue):
+    table = _select_returns(mock_get_db, [PENDING])
+    mock_issue.side_effect = httpx.TimeoutException("read timed out")
+
+    response = client.post("/bookings/b1/approve")
+
+    assert response.status_code == 504
     table.update.assert_not_called()
 
 

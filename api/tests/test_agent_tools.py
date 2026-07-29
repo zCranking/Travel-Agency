@@ -3,7 +3,8 @@ from unittest.mock import patch
 import pytest
 
 import agent.tools
-from agent.tools import create_booking
+from agent.tools import create_booking, search_travel
+from travel.duffel_client import DuffelAPIError
 
 IN_POLICY_FLIGHT = {
     "id": "f9", "airline": "Skyward Air", "fare_class": "economy",
@@ -129,6 +130,46 @@ def test_create_booking_writes_no_row_when_ticketing_fails(mock_get_db, mock_iss
         })
 
     mock_table.insert.assert_not_called()
+
+
+@patch("agent.tools.issue_ticket")
+@patch("agent.tools.get_db")
+def test_create_booking_returns_a_stale_fare_instead_of_crashing_the_chat(
+    mock_get_db, mock_issue
+):
+    """LangGraph re-raises non-ToolInvocationError exceptions, which would
+    500 the chat. A stale fare must come back as a tool result the agent can
+    act on — and must leave no booking row behind."""
+    mock_table = mock_get_db.return_value.table.return_value
+    mock_issue.side_effect = DuffelAPIError(
+        code="offer_no_longer_available",
+        message="Please select another offer.",
+        status_code=422,
+    )
+
+    result = create_booking.invoke({
+        "trip_id": "trip-1", "kind": "flight",
+        "details": IN_POLICY_FLIGHT, "rules": RULES,
+    })
+
+    assert result["status"] == "unavailable"
+    assert "select another offer" in result["error"]
+    mock_table.insert.assert_not_called()
+
+
+@patch("agent.tools._duffel")
+def test_search_travel_returns_duffel_errors_rather_than_raising(mock_duffel):
+    mock_duffel.search_flights.side_effect = DuffelAPIError(
+        code="validation_error", message="SFX is not a valid airport code.",
+        status_code=422,
+    )
+
+    result = search_travel.invoke({
+        "kind": "flight", "origin_or_location": "SFX",
+        "destination": "JFK", "date": "2026-09-01",
+    })
+
+    assert result == [{"error": "SFX is not a valid airport code."}]
 
 
 @patch("agent.tools.issue_ticket")

@@ -26,10 +26,40 @@ any supplier.
   `first` (highest fare rank) so it routes to approval rather than silently
   passing a fare-class check as economy. `first` added to `_FARE_RANK`, which
   previously would have raised `KeyError` on any Duffel first-class offer.
-- **Tests** — 51 passing, ruff clean. Covers offer mapping, Decimal money
-  conversion, the cabin fallback, the live-token refusal (asserting nothing
-  hits the network), traveler lookup, ticket-before-insert, and no-row-on-
-  ticketing-failure.
+- **Offer cache + `UnknownOfferError`** — the agent re-types options into
+  `create_booking` and, in live testing, invented the offer id
+  (`frontier-sfo-jfk-2026-09-11`) and dropped `passenger_ids`. `book()` now
+  resolves the offer from `_OFFER_CACHE` (populated at search) and refuses
+  anything never offered. The supplier's confirmation, not `details`, sets the
+  stored price.
+- **No mock fallback in the real client** — previously an option with no
+  `passenger_ids` silently mock-booked, stamping a fake `WF********` code on a
+  row marked `booked`. That was the phantom booking this work exists to
+  prevent; flights now raise instead.
+- **`DuffelAPIError` carrying Duffel's message** — `raise_for_status()` alone
+  gave "422 Unprocessable Entity" and dropped "offer no longer available".
+- **Expected failures returned, not raised** — LangGraph's default tool-error
+  handler only catches `ToolInvocationError` and re-raises everything else,
+  which would 500 the chat. `search_travel`/`create_booking` return the
+  message instead; the agent then re-searches on its own.
+- **Order timeout + reconciliation** — ticketing uses a 180s timeout (search
+  60s); on timeout the client looks the order up by offer id rather than
+  retrying, since a timeout says nothing about whether the ticket was issued.
+- **`tests/conftest.py`** blanks `DUFFEL_ACCESS_TOKEN` for the suite — without
+  it, a developer's real token made unit tests build a real client and hit the
+  network.
+- **Tests** — 62 passing, ruff clean.
+
+## Live-verified (test mode, 2026-07-29)
+
+Real Duffel calls, not mocks:
+- Search SFO→JFK returned real carriers/prices (Frontier, BA, Iberia, AA).
+- Full agent path booked British Airways → PNR `435TUI`, matching a real order
+  in the Duffel dashboard.
+- The agent hit a genuinely stale Frontier offer mid-booking, read the returned
+  error, and re-booked the next cheapest fare unprompted.
+- Frontier/Travelport offers go stale within *seconds*, not the ~20–30 min the
+  docs imply — the approval-time reprice gap below is therefore real today.
 
 ## Deliberately not built
 
@@ -46,12 +76,16 @@ any supplier.
 
 ## Manual follow-ups (not code)
 
-1. Apply migration `00000000000005_traveler_profile.sql` to the live Supabase
-   project, then re-run `api/scripts/seed.py` to populate traveler profiles.
-   Note `00000000000004_companies_rls.sql` was still uncommitted/unapplied as
-   of this work — check it landed first.
-2. Put the Duffel token in `api/.env` as `DUFFEL_ACCESS_TOKEN=…` and restart
-   the API. Verify with a real search before trusting a booking.
-3. Live-verify: search SFO→JFK through the chat UI and confirm real airline
-   names/prices come back, then book one in test mode and check the order
-   appears in the Duffel dashboard.
+Done as of 2026-07-29: migration `…0005` applied to the live Supabase project,
+traveler profiles seeded, `DUFFEL_ACCESS_TOKEN` set (test token), end-to-end
+booking verified.
+
+Still open:
+1. **Before ever setting a `duffel_live_*` token**, re-read the approval path —
+   with real money, the reprice gap and the timeout-ambiguity window stop being
+   theoretical. `DUFFEL_ALLOW_LIVE_BOOKING` is the deliberate speed bump.
+2. `_OFFER_CACHE` is process-local; it must move to Redis/Postgres before the
+   API runs more than one worker, or booking breaks under a load balancer.
+3. The seeded `traveler_profile` values are fabricated. Real travelers need
+   real passport/DOB data, which is regulated PII — see the build plan's §5
+   data-privacy note before collecting any.

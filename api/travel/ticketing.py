@@ -41,4 +41,10 @@ def issue_ticket(db, trip_id: str, kind: str, details: dict) -> dict:
     """
     option = FlightOption(**details) if kind == "flight" else HotelOption(**details)
     confirmation = get_duffel_client().book(option, get_traveler(db, trip_id))
-    return {**details, "confirmation_code": confirmation.confirmation_code}
+
+    priced = dict(details)
+    if kind == "flight":
+        # The supplier's figure wins. `details` came back through the model,
+        # so its price is a claim; this is what was actually charged.
+        priced["price_cents"] = confirmation.price_cents
+    return {**priced, "confirmation_code": confirmation.confirmation_code}

@@ -4,7 +4,7 @@ from core.db import get_db
 from expense.sync_client import MockExpenseSyncClient
 from policy.retrieval import answer_why
 from policy.rules import check_rules
-from travel.duffel_client import get_duffel_client
+from travel.duffel_client import DuffelAPIError, UnknownOfferError, get_duffel_client
 from travel.models import FlightOption, HotelOption
 from travel.ticketing import issue_ticket
 
@@ -18,10 +18,17 @@ def search_travel(kind: str, origin_or_location: str, destination: str = "", dat
     destination, date as depart_date) or hotels (kind='hotel',
     origin_or_location as location, date as check_in, destination as
     check_out — destination must be a check-out date, not an airport/city)."""
-    if kind == "flight":
-        options = _duffel.search_flights(origin_or_location, destination, date)
-    else:
-        options = _duffel.search_hotels(origin_or_location, date, destination)
+    try:
+        if kind == "flight":
+            options = _duffel.search_flights(origin_or_location, destination, date)
+        else:
+            options = _duffel.search_hotels(origin_or_location, date, destination)
+    except DuffelAPIError as exc:
+        # Returned, not raised: LangGraph's default tool-error handler
+        # re-raises anything that isn't a ToolInvocationError, which would
+        # 500 the whole chat. Handing the message back lets the agent fix a
+        # bad airport code or retry instead of failing at the traveler.
+        return [{"error": exc.message}]
     return [o.model_dump() for o in options]
 
 
@@ -45,7 +52,6 @@ def create_booking(trip_id: str, kind: str, details: dict, rules: dict) -> dict:
     if it violates policy or exceeds the approval threshold, else 'booked'."""
     model = FlightOption(**details) if kind == "flight" else HotelOption(**details)
     check = check_rules(model, rules)
-    price_cents = details.get("price_cents") or details.get("nightly_rate_cents")
     status = "pending_approval" if check.requires_approval else "booked"
 
     db = get_db()
@@ -53,7 +59,20 @@ def create_booking(trip_id: str, kind: str, details: dict, rules: dict) -> dict:
     # booking record at all, rather than a row claiming 'booked' that no
     # airline has ever heard of. A row is recoverable; a phantom ticket isn't.
     if status == "booked":
-        details = issue_ticket(db, trip_id, kind, details)
+        try:
+            details = issue_ticket(db, trip_id, kind, details)
+        except (DuffelAPIError, UnknownOfferError) as exc:
+            # Both are expected and recoverable: fares go stale within seconds
+            # on aggregator content, and the agent sometimes mangles an offer
+            # id. Hand the reason back so it re-searches, rather than raising
+            # and 500ing the chat. No row is written, so nothing claims to be
+            # booked.
+            message = getattr(exc, "message", str(exc))
+            return {"status": "unavailable", "error": message, "violations": []}
+
+    # Read the price after ticketing: issue_ticket replaces it with what the
+    # supplier actually charged.
+    price_cents = details.get("price_cents") or details.get("nightly_rate_cents")
 
     row = db.table("bookings").insert({
         "trip_id": trip_id,

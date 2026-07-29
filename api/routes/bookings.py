@@ -2,6 +2,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 
 from core.db import get_db
+from travel.duffel_client import DuffelAPIError, UnknownOfferError
 from travel.ticketing import issue_ticket
 
 router = APIRouter()
@@ -26,18 +27,29 @@ def approve_booking(booking_id: str) -> dict:
 
     try:
         details = issue_ticket(db, booking["trip_id"], booking["kind"], booking["details"])
-    except httpx.HTTPStatusError as exc:
-        # ponytail: held fares expire (Duffel offers live ~20-30 min), so an
-        # approval that arrives the next morning WILL fail here. Surfacing that
-        # honestly beats a 500 or a fake confirmation. Re-searching and
-        # repricing at approval time is the real fix — build it when approval
-        # latency actually starts costing bookings.
+    except (DuffelAPIError, UnknownOfferError) as exc:
+        # ponytail: held fares go stale — observed within seconds on
+        # aggregator-sourced content, so an approval arriving the next morning
+        # will essentially always land here. Surfacing Duffel's own reason
+        # beats a 500 or a fake confirmation. Re-searching and repricing at
+        # approval time is the real fix — build it when approval latency
+        # actually starts costing bookings.
         raise HTTPException(
             status_code=409,
             detail=(
-                "Could not ticket this booking — the fare is no longer "
-                "available (offers expire shortly after search). Ask the "
-                "traveler to search again for a current fare."
+                f"Could not ticket this booking: {getattr(exc, 'message', exc)} "
+                "Ask the traveler to search again for a current fare."
+            ),
+        ) from exc
+    except httpx.TimeoutException as exc:
+        # Ambiguous: the airline may still ticket. The client already tried to
+        # reconcile, so reaching here means no order was found — but say so
+        # plainly rather than implying it definitely didn't happen.
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                "The airline did not respond in time and no order was found. "
+                "Check the Duffel dashboard before approving again."
             ),
         ) from exc
 
