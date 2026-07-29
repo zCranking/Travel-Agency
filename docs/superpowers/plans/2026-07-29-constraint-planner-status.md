@@ -63,7 +63,7 @@ judgment call.
 - **Planner UI** — `/plan` and `/plan/[tripId]`: meeting intake with a
   paste-to-interpret box, ranked plan cards with rationale, soft-violation
   badges and an auditable risk block, and select → reprice → book.
-- **Tests** — 135 passing, ruff clean.
+- **Tests** — 138 passing, ruff clean; `npm run lint`/`npm run build` clean.
 
 ## Live-verified (test mode, 2026-07-29)
 
@@ -82,6 +82,26 @@ Real Duffel search, three real meetings across two cities:
 It flew out the night before for a 2pm Monday pitch, kept the ORD→DEN hop
 after the binding 9am Tuesday board call rather than during it, and flagged
 the red-eye as a soft violation instead of hiding the option.
+
+`judge` and `risk` were then exercised against real Claude on the same five
+plans. Sample ranking, on options separated by two dollars:
+
+> **#4** — "Comparable in cost but the ORD→DEN leg departs late at night
+> (22:40), forcing an overnight arrival in Denver that leaves less rest time
+> before the Board call and site visit."
+
+**One live bug found and fixed by this exercise.** On the five-itinerary
+payload the model filled `rankings` with a *string* containing the whole JSON
+object rather than a list. Structured-output parsing raised, `judge` swallowed
+it, and every plan came back in bare price order — indistinguishable from a
+working judge. Fixed with a before-validator that normalises the
+double-encoding, plus logging on the fallback, plus a retry after an
+exception instead of breaking straight out. Two regression tests cover the
+coercion.
+
+The lesson generalises past this one bug: **a fallback that is silent on both
+sides is not a fallback, it's an outage you can't see.** Every remaining
+fallback in `planning/` logs.
 
 ## Deliberately not built
 

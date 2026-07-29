@@ -8,6 +8,7 @@ more than could be said for the destination-hash placeholder this replaces.
 No external risk feed. Everything here is a mechanical property of the plan.
 """
 import json
+import logging
 from datetime import timedelta
 
 from langchain_anthropic import ChatAnthropic
@@ -15,6 +16,8 @@ from langchain_anthropic import ChatAnthropic
 from core.config import settings
 from planning.checkers import GROUND_BUFFER
 from planning.models import Itinerary, RiskAssessment, RiskFactor, TripIntent
+
+logger = logging.getLogger(__name__)
 
 _LATE_ARRIVAL_FROM, _LATE_ARRIVAL_TO = 23, 5
 _RED_EYE_FROM, _RED_EYE_TO = 22, 5
@@ -106,7 +109,8 @@ def assess(itinerary: Itinerary, intent: TripIntent) -> RiskAssessment:
             [{"role": "system", "content": _PROMPT},
              {"role": "user", "content": json.dumps([f.model_dump() for f in factors])}]
         )
-    except Exception:  # noqa: BLE001 — degrade, never raise
+    except Exception:  # degrade, never raise
+        logger.warning("risk synthesis failed for %d factors", len(factors), exc_info=True)
         return RiskAssessment(
             severity="medium",
             advisory="Risk factors were identified but could not be summarised.",

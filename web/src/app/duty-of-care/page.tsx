@@ -16,6 +16,12 @@ type DutyOfCareRow = {
     trip_id: string;
     destination: string;
     risk_level: RiskLevel;
+    // "itinerary" = a real assessment derived from the planned trip.
+    // "placeholder" = the destination hash, which is not intelligence and
+    // must be labelled as such wherever it appears.
+    risk_source: "itinerary" | "placeholder";
+    risk_advisory: string | null;
+    risk_factors: { code: string; detail: string }[];
     bookings: {
       id: string;
       kind: "flight" | "hotel";
@@ -209,6 +215,33 @@ export default function DutyOfCarePage() {
                   </RiskLabel>
                 )}
               </div>
+
+              {row.trip?.risk_advisory && (
+                <p className="mt-2.5 border-t border-[var(--color-line)] pt-2.5 font-sans text-[13px] leading-snug text-[var(--color-ink)]">
+                  {row.trip.risk_advisory}
+                </p>
+              )}
+
+              {/* The factors sit next to the severity so a wrong severity is
+                  visibly wrong, rather than a number you have to trust. */}
+              {row.trip && row.trip.risk_factors.length > 0 && (
+                <ul className="mt-1.5 space-y-0.5">
+                  {row.trip.risk_factors.map((factor) => (
+                    <li
+                      key={factor.code}
+                      className="font-mono text-[11px] text-[var(--color-mute)]"
+                    >
+                      {factor.detail}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {row.trip?.risk_source === "placeholder" && (
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-wide text-[var(--color-mute)]">
+                  Placeholder · no planned itinerary to assess
+                </p>
+              )}
             </div>
           ))}
         </div>

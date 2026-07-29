@@ -10,6 +10,7 @@ meeting invitations invariably do.
 Anything ambiguous lands in `unresolved` rather than being guessed. A guessed
 city books a real ticket to the wrong place.
 """
+import logging
 from datetime import date
 
 from langchain_anthropic import ChatAnthropic
@@ -17,6 +18,8 @@ from pydantic import BaseModel, Field
 
 from core.config import settings
 from planning.models import Meeting
+
+logger = logging.getLogger(__name__)
 
 _PROMPT = (
     "Extract business meetings from the text into structured form. Today is "
@@ -50,7 +53,8 @@ def interpret(text: str, today: date) -> TripIntentDraft:
             [{"role": "system", "content": _PROMPT.format(today=today.isoformat())},
              {"role": "user", "content": text}]
         )
-    except Exception:  # noqa: BLE001 — say so, rather than silently returning nothing
+    except Exception:  # say so, rather than silently returning nothing
+        logger.warning("meeting interpretation failed", exc_info=True)
         return TripIntentDraft(
             unresolved=["Could not read that description — add the meetings manually."]
         )

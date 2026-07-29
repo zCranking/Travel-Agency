@@ -157,8 +157,10 @@ export function ItineraryCard({
         )}
         {risk.factors.length > 0 && (
           <dl className="mt-3 flex flex-col gap-0.5 font-mono text-[11px] text-(--color-mute)">
-            {risk.factors.map((factor) => (
-              <div key={factor.code} className="flex gap-2">
+            {/* Keyed by index, not code: one assessment can carry the same
+                code twice (two `overnight_gap`s on a two-city trip). */}
+            {risk.factors.map((factor, i) => (
+              <div key={`f-${i}`} className="flex gap-2">
                 <dt className="uppercase">{factor.code}</dt>
                 <dd>{factor.detail}</dd>
               </div>
