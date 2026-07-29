@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from travel.models import FlightOption, HotelOption
 
-_FARE_RANK = {"economy": 0, "premium_economy": 1, "business": 2}
+_FARE_RANK = {"economy": 0, "premium_economy": 1, "business": 2, "first": 3}
 
 
 class RuleCheckResult(BaseModel):

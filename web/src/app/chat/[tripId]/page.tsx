@@ -69,7 +69,7 @@ export default function ChatPage({
   return (
     <AppShell title="Plan a trip" meta={`TRIP ${tripId.slice(0, 8)}`}>
       <div className="mx-auto flex min-h-0 w-full max-w-[760px] flex-1 flex-col">
-        <MessageList messages={messages} />
+        <MessageList messages={messages} pending={sending} />
 
         {error && (
           <p

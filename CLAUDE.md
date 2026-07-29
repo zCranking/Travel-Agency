@@ -22,14 +22,25 @@ npx supabase db push
 ```
 
 ## Architecture (one paragraph, not a tour)
-Employees log into `web/` (Supabase Auth) and chat with a single LangGraph agent
-(`api/agent/`) that calls three tools: `search_travel` (mock Duffel data today,
-`api/travel/duffel_client.py`), `check_policy` (hardcoded rules first,
-`api/policy/rules.py`, then pgvector-backed RAG over the uploaded policy PDF,
-`api/policy/retrieval.py`, when the "why" matters), and `create_booking`, which
-writes a `bookings` row as `booked` or `pending_approval`. `web/`'s itinerary page
-reads bookings and lets a manager approve/reject pending ones. Nothing in `web/`
-calls Claude, Duffel, or Voyage directly.
+Employees log into `web/` (Supabase Auth) and chat with a LangGraph agent
+(`api/agent/`) that routes to a booking/policy/disruption specialist and calls
+`search_travel` (`api/travel/duffel_client.py`), `check_policy` (hardcoded rules
+first, `api/policy/rules.py`, then pgvector-backed RAG over the uploaded policy
+PDF, `api/policy/retrieval.py`, when the "why" matters), and `create_booking`,
+which writes a `bookings` row as `booked` or `pending_approval`. `web/`'s
+itinerary page reads bookings and lets a manager approve/reject pending ones.
+Nothing in `web/` calls Claude, Duffel, or Voyage directly.
+
+## Duffel
+`get_duffel_client()` returns `MockDuffelClient` when `DUFFEL_ACCESS_TOKEN` is
+blank and `RealDuffelClient` (live REST API) when it is set — flights only;
+hotels and disruptions still delegate to the mock because Duffel Stays needs
+lat/long, not a city name. Anything that marks a booking `booked` must go
+through `issue_ticket()` (`api/travel/ticketing.py`) — both `create_booking`
+and the manager approve endpoint do — so `booked` always means a real supplier
+confirmation. Ticketing happens *before* the row is written/updated. A
+`duffel_live_*` token additionally requires `DUFFEL_ALLOW_LIVE_BOOKING=true`
+before any order is created; unrecognised token prefixes are treated as live.
 
 ## Conventions
 - One demo company only in this build — do not add multi-tenant admin UI.

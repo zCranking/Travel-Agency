@@ -207,7 +207,7 @@ export default function HomePage() {
               </span>
             </Link>
           </div>
-          <div className="absolute inset-x-8 bottom-8 text-white">
+          <div className="absolute inset-x-8 bottom-20 text-white">
             {/* Server and client clocks differ by timezone — the client's is correct. */}
             <p
               suppressHydrationWarning

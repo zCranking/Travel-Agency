@@ -4,10 +4,11 @@ from core.db import get_db
 from expense.sync_client import MockExpenseSyncClient
 from policy.retrieval import answer_why
 from policy.rules import check_rules
-from travel.duffel_client import MockDuffelClient
+from travel.duffel_client import get_duffel_client
 from travel.models import FlightOption, HotelOption
+from travel.ticketing import issue_ticket
 
-_duffel = MockDuffelClient()
+_duffel = get_duffel_client()
 _expense = MockExpenseSyncClient()
 
 
@@ -48,6 +49,12 @@ def create_booking(trip_id: str, kind: str, details: dict, rules: dict) -> dict:
     status = "pending_approval" if check.requires_approval else "booked"
 
     db = get_db()
+    # Ticket BEFORE writing the row: if the supplier call fails we want no
+    # booking record at all, rather than a row claiming 'booked' that no
+    # airline has ever heard of. A row is recoverable; a phantom ticket isn't.
+    if status == "booked":
+        details = issue_ticket(db, trip_id, kind, details)
+
     row = db.table("bookings").insert({
         "trip_id": trip_id,
         "kind": kind,

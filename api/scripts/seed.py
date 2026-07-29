@@ -16,6 +16,19 @@ DEMO_LOGIN_EMAIL = "jordan@acme-demo.test"
 DEMO_LOGIN_PASSWORD = "demo-password-123"
 
 
+def _traveler(given, family, born_on, gender, title, phone):
+    """Duffel passenger fields. Fabricated demo identities — these are the
+    values sent to Duffel test mode when booking a real test order."""
+    return {
+        "given_name": given,
+        "family_name": family,
+        "born_on": born_on,
+        "gender": gender,
+        "title": title,
+        "phone_number": phone,
+    }
+
+
 def _create_demo_auth_user(db) -> str:
     """Create (idempotently) the demo login auth user, returning its id.
 
@@ -153,15 +166,19 @@ def _demo_trips(jordan, manager, employees) -> list[dict]:
                 ("user", "I need to be in New York August 4th through the 7th."),
                 (
                     "assistant",
-                    "Found 3 nonstop options SFO to JFK on Aug 4. The best value in "
-                    "policy is United 8:05a at $624 economy. Want me to hold it?",
+                    (
+                        "Found 3 nonstop options SFO to JFK on Aug 4. The best value "
+                        "in policy is United 8:05a at $624 economy. Want me to hold it?"
+                    ),
                 ),
                 ("user", "Yes, book that one. And somewhere to stay near Midtown."),
                 (
                     "assistant",
-                    "Booked United 8:05a — confirmation UA4X8B. For the hotel, The "
-                    "Standard is $215/night, under the $250 nightly cap. Booked for "
-                    "3 nights, confirmation STD9M4. You're all set.",
+                    (
+                        "Booked United 8:05a — confirmation UA4X8B. For the hotel, The "
+                        "Standard is $215/night, under the $250 nightly cap. Booked for "
+                        "3 nights, confirmation STD9M4. You're all set."
+                    ),
                 ),
             ],
         },
@@ -220,6 +237,9 @@ def seed() -> None:
         "company_id": company_id,
         "name": "Dana Kim",
         "email": "dana@acme-demo.test",
+        "traveler_profile": _traveler(
+            "Dana", "Kim", "1981-03-19", "f", "ms", "+14155550118"
+        ),
     }).execute().data[0]
 
     employees = db.table("employees").insert([
@@ -228,18 +248,27 @@ def seed() -> None:
             "name": "Jordan Lee",
             "email": "jordan@acme-demo.test",
             "manager_employee_id": manager["id"],
+            "traveler_profile": _traveler(
+                "Jordan", "Lee", "1990-06-12", "m", "mr", "+14155550142"
+            ),
         },
         {
             "company_id": company_id,
             "name": "Priya Nair",
             "email": "priya@acme-demo.test",
             "manager_employee_id": manager["id"],
+            "traveler_profile": _traveler(
+                "Priya", "Nair", "1987-11-04", "f", "ms", "+14155550163"
+            ),
         },
         {
             "company_id": company_id,
             "name": "Sam Ortiz",
             "email": "sam@acme-demo.test",
             "manager_employee_id": manager["id"],
+            "traveler_profile": _traveler(
+                "Sam", "Ortiz", "1994-02-27", "m", "mr", "+14155550175"
+            ),
         },
     ]).execute().data
 

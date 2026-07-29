@@ -9,5 +9,12 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     voyage_api_key: str = ""
 
+    # Empty token => MockDuffelClient. A `duffel_test_*` token books against
+    # Duffel's test airlines (no money, no real tickets). A `duffel_live_*`
+    # token spends real money, so it additionally requires the explicit
+    # opt-in below before any order is created.
+    duffel_access_token: str = ""
+    duffel_allow_live_booking: bool = False
+
 
 settings = Settings()
